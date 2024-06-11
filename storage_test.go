@@ -27,16 +27,15 @@ func TestStore(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		key := fmt.Sprintf("test_%d", i)
 		data := []byte("some jpg")
-		if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
-			t.Error(err)
-		}
+		err := s.Write(key, bytes.NewReader(data))
+		assert.NoError(t, err, "Error while writing file with key: "+key)
 		r, err := s.Read(key)
-		assert.NoError(t, err)
+		assert.NoError(t, err, "Error while reading file with key: "+key)
 		b, err := io.ReadAll(r)
 		assert.Equal(t, b, data, "Expected parsed data to be equal to original data.")
 		err = s.Delete(key)
-		assert.NoError(t, err)
-		assert.False(t, s.Has(key), "Failed to delete directory.")
+		assert.NoError(t, err, "Error while deleting file with key: "+key)
+		assert.False(t, s.Has(key), "File still exists.")
 	}
 }
 

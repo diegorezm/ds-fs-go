@@ -60,7 +60,6 @@ var DefaultPathTransformFunc = func(key string) PathKey {
 }
 
 type StoreOpts struct {
-	// root folder
 	Root             string
 	PathTransformFun PathTransformFunc
 }
@@ -91,6 +90,10 @@ func (s *Store) Read(key string) (io.Reader, error) {
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, f)
 	return buf, err
+}
+
+func (s *Store) Write(key string, r io.Reader) error {
+	return s.writeStream(key, r)
 }
 
 func (s *Store) Delete(key string) error {
