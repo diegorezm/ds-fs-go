@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -21,21 +22,33 @@ func TestPathTransformFunc(t *testing.T) {
 }
 
 func TestStore(t *testing.T) {
-	opts := StoreOps{
+	s := newStore()
+	defer teardown(t, s)
+	for i := 0; i < 50; i++ {
+		key := fmt.Sprintf("test_%d", i)
+		data := []byte("some jpg")
+		if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+			t.Error(err)
+		}
+		r, err := s.Read(key)
+		assert.NoError(t, err)
+		b, err := io.ReadAll(r)
+		assert.Equal(t, b, data, "Expected parsed data to be equal to original data.")
+		err = s.Delete(key)
+		assert.NoError(t, err)
+		assert.False(t, s.Has(key), "Failed to delete directory.")
+	}
+}
+
+func newStore() *Store {
+	opts := StoreOpts{
 		PathTransformFun: CASPathTransformFunc,
 	}
-	s := NewStore(opts)
-	data := []byte("some jpg")
-	key := "testing"
-	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+	return NewStore(opts)
+}
+
+func teardown(t *testing.T, s *Store) {
+	if err := s.Clear(); err != nil {
 		t.Error(err)
 	}
-	r, err := s.Read(key)
-	if err != nil {
-		t.Error(err)
-	}
-	b, err := io.ReadAll(r)
-	assert.Equal(t, b, data, "Expected parsed data to be equal to original data.")
-	s.Delete(key)
-	assert.False(t, s.Has(key), "Expected 'hasKey' to be false.")
 }
