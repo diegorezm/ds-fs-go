@@ -59,17 +59,17 @@ var DefaultPathTransformFunc = func(key string) PathKey {
 	}
 }
 
-type StoreOps struct {
+type StoreOpts struct {
 	// root folder
 	Root             string
 	PathTransformFun PathTransformFunc
 }
 
 type Store struct {
-	StoreOps
+	StoreOpts
 }
 
-func NewStore(opts StoreOps) *Store {
+func NewStore(opts StoreOpts) *Store {
 	if opts.PathTransformFun == nil {
 		opts.PathTransformFun = DefaultPathTransformFunc
 	}
@@ -78,7 +78,7 @@ func NewStore(opts StoreOps) *Store {
 	}
 
 	return &Store{
-		StoreOps: opts,
+		StoreOpts: opts,
 	}
 }
 
@@ -93,14 +93,14 @@ func (s *Store) Read(key string) (io.Reader, error) {
 	return buf, err
 }
 
-// FIX: does not delete properly
 func (s *Store) Delete(key string) error {
 	pathKey := s.PathTransformFun(key)
 	fullPath := fmt.Sprintf("%s/%s", s.Root, pathKey.FirstPathName())
-	defer func() {
-		fmt.Printf("Deleted [%s] from system disk\n", fullPath)
-	}()
 	return os.RemoveAll(fullPath)
+}
+
+func (s *Store) Clear() error {
+	return os.RemoveAll(s.Root)
 }
 
 func (s *Store) Has(key string) bool {
@@ -117,14 +117,19 @@ func (s *Store) readStream(key string) (io.ReadCloser, error) {
 func (s *Store) writeStream(key string, r io.Reader) error {
 	pathKey := s.PathTransformFun(key)
 	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.Pathname)
+
 	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
 		return err
 	}
+
 	f, err := os.Create(pathKey.FullPathWithRoot(s.Root))
 
 	if err != nil {
 		return err
 	}
+
+	defer f.Close()
+
 	// tests only work if i copy
 	// the io reader buffer
 	_, err = io.Copy(f, r)
